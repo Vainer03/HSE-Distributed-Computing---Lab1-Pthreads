@@ -4,14 +4,17 @@
 #include <pthread.h>
 #include <math.h>
 #include <time.h>
-#include "monte_carlo.h"
+#include "mandelbrot_set.h"
 
 uint64_t n_threads;   //number of threads
-uint64_t n_cats;    //number of trials where cats have a choice to lie down in a circled area of a square
-uint64_t total_cats_in_circle = 0;
+uint64_t n_points;    //number of points
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-void* monte_carlo_routine(void* args) {
+//double start, finish;
+
+void* mandelbrot_set_routine(void* args) {
+
+    /*
     uint64_t cats_per_thread = *((uint64_t*)args);
     uint64_t cats_in_circle = 0;
 
@@ -26,57 +29,48 @@ void* monte_carlo_routine(void* args) {
     pthread_mutex_lock(&mutex);
     total_cats_in_circle += cats_in_circle;
     pthread_mutex_unlock(&mutex);
+
+    */
     pthread_exit(NULL);
 }
 
 int main(int argc, char** argv) {
     if (argc != 3) {
-        fprintf(stderr, "Use the following format:\n %s n_threads n_cats\n", argv[0]);
+        fprintf(stderr, "Use the following format:\n %s n_threads n_points\n", argv[0]);
         return EXIT_FAILURE;
     }
 
     if ((argv[1][0] == '-') || (argv[2][0] == '-') || (argv[1][0] == '0') || (argv[2][0] == '0')) {
-        fprintf(stderr, "both n_threads and n_cats need to be > 0");
+        fprintf(stderr, "both n_threads and n_points need to be > 0");
         return EXIT_FAILURE;
     }
 
-    srand(time(NULL));
     n_threads = strtoll(argv[1], NULL, 10);
-    n_cats = strtoll(argv[2], NULL, 10);
+    n_points = strtoll(argv[2], NULL, 10);
 
-    if (n_threads > n_cats) {
-        n_threads = n_cats;
+    double xmin = -2.0, xmax = 1.0;
+    double ymin = -1.5, ymax = 1.5;
+
+    FILE *output_file = fopen("mandelbrot.csv", "w");
+    if (output_file == NULL) {
+        perror("Error opening file");
+        exit(EXIT_FAILURE);
     }
 
     pthread_t* thread_handler = malloc(n_threads * sizeof(pthread_t));
-    if (!thread_handler) {
-        fprintf(stderr, "Couldn't allocate memory for the thread_handler");
-        return EXIT_FAILURE;
-    }
-    uint64_t cats_per_thread = n_cats/n_threads;
-    uint64_t cats_in_last_thread = n_cats - cats_per_thread * n_threads;
 
-    for (uint64_t i=0; i < n_threads-1; i++) {
+
+    /*
+    srand(time(NULL));
+    n_threads = strtoll(argv[1], NULL, 10);
+    n_cats = strtoll(argv[2], NULL, 10);
+    pthread_t* thread_handler = malloc(n_threads * sizeof(pthread_t));
+    uint64_t cats_per_thread = n_cats/n_threads;
+
+    for (uint64_t i=0; i < n_threads; i++) {
         int err = pthread_create(&thread_handler[i], NULL, monte_carlo_routine, (void*)&cats_per_thread);
         if (err != 0) {
             perror("Failed to create thread");
-            free(thread_handler);
-            return EXIT_FAILURE;
-        }
-    }
-    if (cats_in_last_thread != 0) {
-        int err = pthread_create(&thread_handler[n_threads-1], NULL, monte_carlo_routine, (void*)&cats_in_last_thread);
-        if (err != 0) {
-            perror("Failed to create the last thread");
-            free(thread_handler);
-            return EXIT_FAILURE;
-        }
-    }
-    else {
-        int err = pthread_create(&thread_handler[n_threads-1], NULL, monte_carlo_routine, (void*)&cats_per_thread);
-        if (err != 0) {
-            perror("Failed to create the last thread");
-            free(thread_handler);
             return EXIT_FAILURE;
         }
     }
@@ -88,7 +82,10 @@ int main(int argc, char** argv) {
     double pi = 4.0 * total_cats_in_circle/n_cats;
     printf("Estimated value of pi: %lf\n", pi);
 
-    free(thread_handler);
+
     pthread_mutex_destroy(&mutex);
+
+    */
+    free(thread_handler);
     return EXIT_SUCCESS;
 }
