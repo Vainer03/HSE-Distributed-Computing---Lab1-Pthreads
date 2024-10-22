@@ -4,11 +4,13 @@
 #include <pthread.h>
 #include <math.h>
 #include <time.h>
+#include "timer.h"
 #include "monte_carlo.h"
 
-uint64_t n_threads_mc;   //number of threads
-uint64_t n_cats;         //number of trials where cats have a choice to lie down in a circled area of a square
+uint64_t n_threads;     //number of threads
+uint64_t n_cats;        //number of trials where cats have a choice to lie down in a circled area of a square
 uint64_t total_cats_in_circle = 0;
+double start, finish;
 pthread_mutex_t mutex_mc = PTHREAD_MUTEX_INITIALIZER;
 
 void* monte_carlo_routine(void* args) {
@@ -29,7 +31,7 @@ void* monte_carlo_routine(void* args) {
     pthread_exit(NULL);
 }
 
-int monte_carlo(int argc, char** argv) {
+int main(int argc, char** argv) {
     if (argc != 3) {
         fprintf(stderr, "Use the following format:\n %s n_threads n_cats\n", argv[0]);
         return EXIT_FAILURE;
@@ -41,21 +43,22 @@ int monte_carlo(int argc, char** argv) {
     }
 
     srand(time(NULL));
-    n_threads_mc = strtoll(argv[1], NULL, 10);
+    n_threads = strtoll(argv[1], NULL, 10);
     n_cats = strtoll(argv[2], NULL, 10);
 
-    if (n_threads_mc > n_cats) {
-        n_threads_mc = n_cats;
+    if (n_threads > n_cats) {
+        n_threads = n_cats;
     }
 
-    pthread_t* thread_handler = malloc(n_threads_mc * sizeof(pthread_t));
+    pthread_t* thread_handler = malloc(n_threads * sizeof(pthread_t));
     if (!thread_handler) {
         fprintf(stderr, "Couldn't allocate memory for the thread_handler");
         return EXIT_FAILURE;
     }
-    uint64_t cats_per_thread = n_cats/n_threads_mc;
+    uint64_t cats_per_thread = n_cats/n_threads;
 
-    for (uint64_t i=0; i < n_threads_mc-1; i++) {
+    GET_TIME(start);
+    for (uint64_t i=0; i < n_threads-1; i++) {
         int err = pthread_create(&thread_handler[i], NULL, monte_carlo_routine, (void*)&cats_per_thread);
         if (err != 0) {
             perror("Failed to create thread");
@@ -63,20 +66,22 @@ int monte_carlo(int argc, char** argv) {
             return EXIT_FAILURE;
         }
     }
-    uint64_t cats_in_the_last_thread = cats_per_thread + (n_cats % n_threads_mc);
-    int err = pthread_create(&thread_handler[n_threads_mc-1], NULL, monte_carlo_routine, (void*)&cats_in_the_last_thread);
+    uint64_t cats_in_the_last_thread = cats_per_thread + (n_cats % n_threads);
+    int err = pthread_create(&thread_handler[n_threads-1], NULL, monte_carlo_routine, (void*)&cats_in_the_last_thread);
     if (err != 0) {
         perror("Failed to create thread");
         free(thread_handler);
         return EXIT_FAILURE;
     }
 
-    for (uint64_t i = 0; i < n_threads_mc; i++) {
+    for (uint64_t i = 0; i < n_threads; i++) {
         pthread_join(thread_handler[i], NULL);
     }
 
     double pi = 4.0 * total_cats_in_circle/n_cats;
     printf("Estimated value of pi: %lf\n", pi);
+    GET_TIME(finish);
+    printf("Time taken to calculate: %lf\n", finish - start);
 
     free(thread_handler);
     pthread_mutex_destroy(&mutex_mc);

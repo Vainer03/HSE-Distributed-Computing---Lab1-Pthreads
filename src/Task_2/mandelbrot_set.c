@@ -1,40 +1,49 @@
+#include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
+
 #include <pthread.h>
-#include <math.h>
-#include <time.h>
+#include <string.h>
+#include <sys/types.h>
+#include <complex.h>
+
+#include "timer.h"
 #include "mandelbrot_set.h"
 
 uint64_t n_threads;   //number of threads
 uint64_t n_points;    //number of points
+uint64_t points_per_thread;
+double start, finish;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-//double start, finish;
+#define MAX_ITER 1000
+FILE *output;
 
-void* mandelbrot_set_routine(void* args) {
-
-    /*
-    uint64_t cats_per_thread = *((uint64_t*)args);
-    uint64_t cats_in_circle = 0;
-
-    for (uint64_t cat = 0; cat < cats_per_thread; cat++) {
-        double_t x = (double_t)rand() / (double_t)RAND_MAX;
-        double_t y = (double_t)rand() / (double_t)RAND_MAX;
-        if (x*x + y*y <= 1) {
-            cats_in_circle++;
+int is_a_mandelbrot_set(double complex c) {
+    double complex z = 0;
+    int16_t n = 0;
+    for (uint16_t i = 0; i < MAX_ITER; i++) {
+        z = z * z + c;
+        if (cabs(z) >= 2.0) {
+            return 0;
         }
     }
-
-    pthread_mutex_lock(&mutex);
-    total_cats_in_circle += cats_in_circle;
-    pthread_mutex_unlock(&mutex);
-
-    */
-    pthread_exit(NULL);
+    return 1;
 }
 
-int mandelbrot_set(int argc, char** argv) {
+void* mandelbrot_set_routine(void* args) {
+    uint64_t thread_id = (long long)args;
+    uint64_t start_point = thread_id * points_per_thread;
+    uint64_t end_point = ((start_point + points_per_thread) < n_points) ? (start_point + points_per_thread) : n_points;
+
+    for (int index = start_point; index < end_point; index++) {
+
+    }
+
+}
+
+int main(int argc, char** argv) {
     if (argc != 3) {
         fprintf(stderr, "Use the following format:\n %s n_threads n_points\n", argv[0]);
         return EXIT_FAILURE;
@@ -48,44 +57,43 @@ int mandelbrot_set(int argc, char** argv) {
     n_threads = strtoll(argv[1], NULL, 10);
     n_points = strtoll(argv[2], NULL, 10);
 
-    double xmin = -2.0, xmax = 1.0;
-    double ymin = -1.5, ymax = 1.5;
-
-    FILE *output_file = fopen("mandelbrot.csv", "w");
-    if (output_file == NULL) {
-        perror("Error opening file");
-        exit(EXIT_FAILURE);
+    if (n_threads > n_points) {
+        n_threads = n_points;
     }
 
     pthread_t* thread_handler = malloc(n_threads * sizeof(pthread_t));
+    if (!thread_handler) {
+        fprintf(stderr, "Couldn't allocate memory for the thread_handler");
+        return EXIT_FAILURE;
+    }
 
+    points_per_thread = n_points/n_threads;
 
-    /*
-    srand(time(NULL));
-    n_threads = strtoll(argv[1], NULL, 10);
-    n_cats = strtoll(argv[2], NULL, 10);
-    pthread_t* thread_handler = malloc(n_threads * sizeof(pthread_t));
-    uint64_t cats_per_thread = n_cats/n_threads;
-
-    for (uint64_t i=0; i < n_threads; i++) {
-        int err = pthread_create(&thread_handler[i], NULL, monte_carlo_routine, (void*)&cats_per_thread);
+    GET_TIME(start);
+    for (uint64_t i=0; i < n_threads-1; i++) {
+        int err = pthread_create(&thread_handler[i], NULL, mandelbrot_set_routine, (void*)&points_per_thread);
         if (err != 0) {
             perror("Failed to create thread");
+            free(thread_handler);
             return EXIT_FAILURE;
         }
+    }
+    uint64_t points_in_the_last_thread = points_per_thread + (n_points % n_threads);
+    int err = pthread_create(&thread_handler[n_threads-1], NULL, mandelbrot_set_routine, (void*)&points_in_the_last_thread);
+    if (err != 0) {
+        perror("Failed to create thread");
+        free(thread_handler);
+        return EXIT_FAILURE;
     }
 
     for (uint64_t i = 0; i < n_threads; i++) {
         pthread_join(thread_handler[i], NULL);
     }
+    GET_TIME(finish);
 
-    double pi = 4.0 * total_cats_in_circle/n_cats;
-    printf("Estimated value of pi: %lf\n", pi);
+    printf("Time taken to calculate: %lf\n", finish - start);
 
-
-    pthread_mutex_destroy(&mutex);
-
-    */
     free(thread_handler);
+    pthread_mutex_destroy(&mutex);
     return EXIT_SUCCESS;
 }
