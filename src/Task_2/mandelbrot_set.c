@@ -34,7 +34,7 @@ void* mandelbrot_set_routine(void* args) {
     pthread_exit(NULL);
 }
 
-int main(int argc, char** argv) {
+int mandelbrot_set(int argc, char** argv) {
     if (argc != 3) {
         fprintf(stderr, "Use the following format:\n %s n_threads n_points\n", argv[0]);
         return EXIT_FAILURE;

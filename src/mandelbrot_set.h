@@ -1,8 +1,0 @@
-//
-// Created by Anastasiya on 22.10.2024.
-//
-
-#ifndef HSE_DC_LAB1_CLION_MANDELBROT_SET_H
-#define HSE_DC_LAB1_CLION_MANDELBROT_SET_H
-
-#endif //HSE_DC_LAB1_CLION_MANDELBROT_SET_H
