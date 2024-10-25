@@ -2,10 +2,11 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <pthread.h>
-#include <math.h>
 #include <time.h>
+#include <math.h>
 #include "timer.h"
 #include "monte_carlo.h"
+#include "../my_rand.h"
 
 uint64_t n_threads;     //number of threads
 uint64_t n_cats;        //number of trials where cats have a choice to lie down in a circled area of a square
@@ -16,10 +17,11 @@ pthread_mutex_t mutex_mc = PTHREAD_MUTEX_INITIALIZER;
 void* monte_carlo_routine(void* args) {
     uint64_t cats_per_thread = *((uint64_t*)args);
     uint64_t cats_in_circle = 0;
+    uint32_t seed = time(NULL);
 
     for (uint64_t cat = 0; cat < cats_per_thread; cat++) {
-        double_t x = (double_t)rand() / (double_t)RAND_MAX;
-        double_t y = (double_t)rand() / (double_t)RAND_MAX;
+        double_t x = my_drand(&seed) * 2.0 - 1.0;
+        double_t y = my_drand(&seed) * 2.0 - 1.0;
         if (x*x + y*y <= 1) {
             cats_in_circle++;
         }
@@ -42,7 +44,6 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    srand(time(NULL));
     n_threads = strtoll(argv[1], NULL, 10);
     n_cats = strtoll(argv[2], NULL, 10);
 
