@@ -4,6 +4,8 @@
 #include "my_rand.h"
 #include "timer.h"
 
+#include "rwlock.h"
+
 /* Random ints are less than MAX_KEY */
 const int MAX_KEY = 100000000;
 
