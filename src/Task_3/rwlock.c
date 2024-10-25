@@ -95,10 +95,17 @@ int my_pthread_rwlock_wrlock(my_pthread_rwlock_t *my_rwlock) {
 
 int my_pthread_rwlock_unlock(my_pthread_rwlock_t *my_rwlock) {
     pthread_mutex_lock(&my_rwlock->mutex);
-    my_rwlock->read_count--;
-    if (my_rwlock->read_count == 0 && my_rwlock->write_waiters > 0) {
-        pthread_cond_signal(&my_rwlock->write_cond);
+    if (my_rwlock->write_lock) {
+        my_rwlock->write_lock = 0;
+        if (my_rwlock->write_waiters > 0) {
+            pthread_cond_signal(&my_rwlock->write_cond);
+        }
     }
-    pthread_mutex_unlock(&my_rwlock->mutex);
+    else {
+        my_rwlock->read_count--;
+        if (my_rwlock->read_count == 0 && my_rwlock->write_waiters > 0) {
+            pthread_cond_signal(&my_rwlock->write_cond);
+        }
+    }
     return 0;
 }
