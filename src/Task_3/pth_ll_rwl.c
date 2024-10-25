@@ -3,12 +3,12 @@
 #include <pthread.h>
 #include "my_rand.h"
 #include "timer.h"
-
 #include "rwlock.h"
+
+#define MY_RWLOCK
 
 /* Random ints are less than MAX_KEY */
 const int MAX_KEY = 100000000;
-
 
 /* Struct for list nodes */
 struct list_node_s {
@@ -24,6 +24,7 @@ double      insert_percent;
 double      search_percent;
 double      delete_percent;
 pthread_rwlock_t    rwlock;
+my_pthread_rwlock_t my_rwlock;
 pthread_mutex_t     count_mutex;
 int         member_count = 0, insert_count = 0, delete_count = 0;
 
@@ -33,6 +34,7 @@ void        Get_input(int* inserts_in_main_p);
 
 /* Thread function */
 void*       Thread_work(void* rank);
+void*       My_Thread_work(void* rank);
 
 /* List operations */
 int         Insert(int value);
@@ -74,9 +76,17 @@ int main(int argc, char* argv[]) {
 #  endif
 
    thread_handles = malloc(thread_count*sizeof(pthread_t));
+
+# ifndef MY_RWLOCK
    pthread_mutex_init(&count_mutex, NULL);
    pthread_rwlock_init(&rwlock, NULL);
+# else
+   if (my_pthread_rwlock_init(&my_rwlock) != 0) {
+       return -1;
+   }
+# endif
 
+# ifndef MY_RWLOCK
    GET_TIME(start);
    for (i = 0; i < thread_count; i++)
       pthread_create(&thread_handles[i], NULL, Thread_work, (void*) i);
@@ -89,6 +99,20 @@ int main(int argc, char* argv[]) {
    printf("member ops = %d\n", member_count);
    printf("insert ops = %d\n", insert_count);
    printf("delete ops = %d\n", delete_count);
+# else
+    GET_TIME(start);
+    for (i = 0; i < thread_count; i++)
+        pthread_create(&thread_handles[i], NULL, My_Thread_work, (void*) i);
+
+    for (i = 0; i < thread_count; i++)
+        pthread_join(thread_handles[i], NULL);
+    GET_TIME(finish);
+    printf("Elapsed time = %e seconds\n", finish - start);
+    printf("Total ops = %d\n", total_ops);
+    printf("member ops = %d\n", member_count);
+    printf("insert ops = %d\n", insert_count);
+    printf("delete ops = %d\n", delete_count);
+# endif
 
 #  ifdef OUTPUT
    printf("After threads terminate, list = \n");
@@ -97,10 +121,16 @@ int main(int argc, char* argv[]) {
 #  endif
 
    Free_list();
+
+# ifndef MY_RWLOCK
    pthread_rwlock_destroy(&rwlock);
    pthread_mutex_destroy(&count_mutex);
    free(thread_handles);
-
+# else
+   if (my_pthread_rwlock_destroy(&my_rwlock) != 0) {
+       return -1;
+   }
+# endif
    return 0;
 }  /* main */
 
@@ -293,3 +323,42 @@ void* Thread_work(void* rank) {
 
    return NULL;
 }  /* Thread_work */
+
+/*-----------------------------------------------------------------*/
+void* My_Thread_work(void* rank) {
+    long my_rank = (long) rank;
+    int i, val;
+    double which_op;
+    unsigned seed = my_rank + 1;
+    int my_member_count = 0, my_insert_count=0, my_delete_count=0;
+    int ops_per_thread = total_ops/thread_count;
+
+    for (i = 0; i < ops_per_thread; i++) {
+        which_op = my_drand(&seed);
+        val = my_rand(&seed) % MAX_KEY;
+        if (which_op < search_percent) {
+            my_pthread_rwlock_rdlock(&my_rwlock);
+            Member(val);
+            my_pthread_rwlock_unlock(&my_rwlock);
+            my_member_count++;
+        } else if (which_op < search_percent + insert_percent) {
+            my_pthread_rwlock_wrlock(&my_rwlock);
+            Insert(val);
+            my_pthread_rwlock_unlock(&my_rwlock);
+            my_insert_count++;
+        } else { /* delete */
+            my_pthread_rwlock_wrlock(&my_rwlock);
+            Delete(val);
+            my_pthread_rwlock_unlock(&my_rwlock);
+            my_delete_count++;
+        }
+    }  /* for */
+
+    pthread_mutex_lock(&count_mutex);
+    member_count += my_member_count;
+    insert_count += my_insert_count;
+    delete_count += my_delete_count;
+    pthread_mutex_unlock(&count_mutex);
+
+    return NULL;
+}  /* My_Thread_work */

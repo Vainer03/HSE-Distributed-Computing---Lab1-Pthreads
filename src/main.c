@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <pthread.h>
+
 #include "./Task_1/monte_carlo.h"
 #include "./Task_2/mandelbrot_set.h"
 #include "./Task_3/rwlock.h"

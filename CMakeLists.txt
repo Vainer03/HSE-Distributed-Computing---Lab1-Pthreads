@@ -25,15 +25,11 @@ add_executable(mandelbrot_set
         src/Task_2/mandelbrot_set.c
         src/Task_2/mandelbrot_set.h)
 
-add_executable(my_rwlock
+add_executable(rwlock
+        src/Task_3/pth_ll_rwl.c
         src/timer.h
         src/my_rand.c
         src/my_rand.h
         src/Task_3/rwlock.c
-        src/Task_3/rwlock.h)
-
-add_executable(rwlock
-        src/timer.h
-        src/my_rand.c
-        src/my_rand.h
-        src/Task_3/pth_ll_rwl.c)
+        src/Task_3/rwlock.h
+        )
