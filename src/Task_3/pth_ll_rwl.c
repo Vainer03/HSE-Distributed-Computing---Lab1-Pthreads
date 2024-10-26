@@ -6,6 +6,7 @@
 #include "rwlock.h"
 
 #define MY_RWLOCK
+#define TEST
 
 /* Random ints are less than MAX_KEY */
 const int MAX_KEY = 100000000;
@@ -53,11 +54,20 @@ int main(int argc, char* argv[]) {
    unsigned seed = 1;
    double start, finish;
 
+#ifndef TEST
    if (argc != 2) Usage(argv[0]);
    thread_count = strtol(argv[1],NULL,10);
 
    Get_input(&inserts_in_main);
-
+# else
+   if (argc != 6) Usage(argv[0]);
+   thread_count = strtol(argv[1], NULL, 10);
+   inserts_in_main = strtol(argv[2], NULL, 10);
+   total_ops = strtol(argv[3], NULL, 10);
+   search_percent = strtod(argv[4], NULL);
+   insert_percent = strtod(argv[5], NULL);
+   delete_percent = 1.0 - (search_percent + insert_percent);
+#endif
    /* Try to insert inserts_in_main keys, but give up after */
    /* 2*inserts_in_main attempts.                           */
    i = attempts = 0;
